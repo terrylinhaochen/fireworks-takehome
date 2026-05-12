@@ -2,40 +2,54 @@
 
 ## The Problem
 
-Companies evaluating Fireworks already know the API migration is easy — change the base URL, swap the key, pick a model. Fireworks has done a good job making this feel familiar with OpenAI-compatible endpoints.
+Switching from a closed model to an open model on Fireworks is trivial at the API level. The models are interchangeable in terms of configuration — same SDK, same endpoint shape, swap the base URL and model ID. Fireworks has already solved this. Documentation isn't the bottleneck. Configuration isn't the bottleneck.
 
-But teams with production AI workflows don't switch because **the API working isn't the same as the workflow working.** Their real fear: "My GPT pipeline handles tool calls, parses structured JSON, and follows specific system prompt patterns. Will Kimi or DeepSeek do the same thing, or will something subtle break in production?"
+**The bottleneck is behavioral reliability.**
 
-This behavioral uncertainty — not the mechanical migration — is what keeps teams on closed models. They can't justify the risk of shipping a model swap without testing it against their actual workflows first. And right now, there's no good way to do that short of manually rewriting code and hoping for the best.
+Teams running GPT or Claude in production have already tuned their workflows around a specific model's behavior — how it calls tools, how it formats JSON, what it does with ambiguous instructions, how it handles edge cases. These are brownfield systems: real products serving real users, with months of prompt engineering baked in.
 
-## Why This Is the Right Wedge
+When an engineer swaps in Kimi or MiniMax, the API call succeeds but the behavior may not match. A model might add arguments the tool schema didn't ask for. It might return `confidence: 82` instead of `0.82`. It might respond with plain text when a tool call was expected. These differences are invisible from the docs and only surface in production.
 
-I chose **tool calling and structured output compatibility** as the migration wedge because:
+The promise of switching to Fireworks is compelling — lower cost, lower latency, open-model control. But teams can't capture that value unless they can verify that their workflows will behave the same way. Right now, there's no good way to test that short of shipping the swap and watching what breaks.
 
-1. **It's where "OpenAI-compatible" breaks down.** The API shape looks the same, but models disagree on argument formatting, JSON schema adherence, and whether to call a tool at all. Our harness caught Qwen 3 8B returning plain text instead of a tool call, and MiniMax returning `confidence: 82` instead of `0.82`. These are production-breaking differences invisible from the docs.
+## Why Tool Calling and Structured Output
 
-2. **It's the highest-stakes workflow type.** Agentic tool-use and structured-output pipelines are exactly the workloads Fireworks wants to win — they're high-volume, cost-sensitive, and the most likely to migrate from GPT/Claude. But they're also the hardest to migrate because they have the most behavioral surface area.
+I chose this as the wedge because it's where "OpenAI-compatible" most visibly stops being "behavior-compatible":
 
-3. **It's testable.** Unlike "does the response feel right?" (subjective), tool call correctness and JSON schema adherence are deterministic — you can validate them automatically without an LLM judge.
+- **It's deterministically testable.** Tool call correctness and JSON schema adherence can be validated automatically — no subjective LLM judge needed. "Did the model call the right function with the right arguments?" has a clear answer.
+- **It's the highest-value workflow type.** Agentic tool-use and structured-output pipelines are exactly the workloads Fireworks wants to capture — high-volume, cost-sensitive, and the most likely to migrate from GPT/Claude.
+- **It surfaces real differences.** In our prototype, Qwen 3 8B returned plain text instead of a tool call. MiniMax returned confidence values on a 0-100 scale instead of 0-1. These are production-breaking behavioral gaps that no amount of documentation would prevent.
 
-## The Solution
+## The Approach
 
-**Fireworks Switchboard** is an agent skills package + test harness, modeled after [Stripe's agent skills approach](https://docs.stripe.com/building-with-ai). Two layers:
+Engineers doing model migrations today are working inside coding agents — Claude Code, Codex, Cursor. They aren't looking for a playground or a dashboard. They want to stay in their workflow and get reliable guidance on what to swap, what will break, and how to fix it.
 
-- **Skills** (the knowledge): Migration playbooks that coding agents read to understand how to swap providers, which Fireworks models map to which closed models, and what behavioral differences to expect. Installed with one command: `npx skills add terrylinhaochen/fireworks-takehome -y`
+Switchboard is designed as a **concierge experience for the coding agent**, modeled after [Stripe's agent skills](https://docs.stripe.com/building-with-ai). Two layers:
 
-- **Harness** (the test): A CLI that calls the real Fireworks API with a developer's workflow definition, validates the response against their expectations, and reports what passes, what breaks, and what to fix.
+**Fat skills** — migration knowledge that the agent reads directly. Model mapping tables, behavioral difference checklists, detection patterns, remediation steps. Installed in one command:
+
+```
+npx skills add terrylinhaochen/fireworks-takehome -y
+```
+
+**Thin harness** — a test runner that calls the real Fireworks API with the developer's workflow, validates the response against their expectations, and surfaces where behavior diverges. The agent runs the harness, reads the results, and uses the skills to guide the engineer through fixes.
+
+The skills are the heavy layer. They scale to new providers, new models, and new failure patterns without changing the harness. The harness stays small and deterministic.
 
 ## Key Design Choices
 
-**Agent-first, not dashboard-first.** Developers migrate code with coding agents in their IDE — not by uploading files to a web dashboard. The skills are plain markdown that Claude Code and Codex read directly. This matches how migration actually happens today.
+**Agent-first.** The engineer's coding agent reads the skills, runs the harness, interprets the results, and proposes fixes — all inside the IDE. No context switching to a separate tool. This matches how migration work actually happens today.
 
-**Real API calls, not simulations.** The harness hits the live Fireworks API. This is important because model behavior changes with updates. Mock data would give false confidence. Real calls surface real differences.
+**Real API calls.** The harness hits the live Fireworks API, not mocked data. Model behavior changes with updates. Real calls surface real differences.
 
-**Pass/fail, not scores.** A weighted compatibility score sounds sophisticated but doesn't help an engineer decide. "Tool call format: pass. Argument extraction: partial — adds unrequested parameters" is actionable. A score of 78% is not.
+**Pass/fail with remediation, not scores.** "Argument extraction: partial — adds unrequested parameters. Fix: add 'only use required parameters' to system prompt" is actionable. A compatibility score of 78% is not.
 
-## If This Were a Real Project
+## What Comes Next
 
-**Immediate next steps**: Auto-generate test cases from existing codebases (the agent reads your OpenAI code and creates the case file), add Claude-to-Fireworks and Gemini-to-Fireworks skills, expose the harness as an MCP server so agents can run checks programmatically during migration.
+**Surface a concrete failure, then fix it.** The harness already reports where behavior diverges. The next step is closing the loop: when a dimension fails, the agent uses the skills to propose a specific code or prompt change, re-runs the harness, and verifies the fix. This turns Switchboard from a diagnostic tool into an end-to-end migration assistant.
 
-**Longer term**: Integrate into the Fireworks onboarding flow. When a new user signs up and says "I'm migrating from GPT," Switchboard runs their workflow against candidate models and recommends one with evidence. This turns model selection from a docs problem into a product experience.
+**Auto-generate cases from codebases.** Instead of writing test cases manually, the agent reads the engineer's existing OpenAI/Claude code and generates the case file automatically — detecting tools, expected schemas, and system prompts.
+
+**MCP server.** Expose the harness as MCP tools so agents can run compatibility checks programmatically during migration, not as a separate CLI step.
+
+**Embed in Fireworks onboarding.** When a new user signs up and says "I'm migrating from GPT," Switchboard runs their workflow against candidate models and recommends one with evidence — turning model selection from a research problem into a guided product experience.

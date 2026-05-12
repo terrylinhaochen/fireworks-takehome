@@ -28,6 +28,7 @@ function getOverallStatus(results) {
 
 function getMigrationNotes(results, overallStatus) {
   const notes = [];
+  const fixes = [];
 
   if (overallStatus === "ready") {
     notes.push("Drop-in compatible. Change base_url and model string only.");
@@ -35,28 +36,54 @@ function getMigrationNotes(results, overallStatus) {
 
   for (const r of results) {
     if (r.status === "partial") {
-      // Extract actionable advice from the detail
       if (r.detail.includes("unrequested parameter")) {
-        notes.push('Add "only use required parameters" to system prompt.');
+        fixes.push({
+          issue: "Model adds arguments not in tool schema",
+          fix: 'Add to system prompt: "Only include parameters explicitly listed in the tool schema. Do not add extra parameters."',
+          alt: "Add post-processing to strip unknown keys from tool_call arguments before passing to your function.",
+        });
       }
       if (r.detail.includes("Extra fields")) {
-        notes.push("Add explicit JSON schema in system prompt to constrain output fields.");
+        fixes.push({
+          issue: "Model returns extra JSON fields not in expected schema",
+          fix: "Add the exact JSON schema to your system prompt, e.g.: 'Return JSON with exactly these fields and no others: ...'",
+          alt: "Add post-processing to pick only expected keys from the parsed JSON.",
+        });
       }
       if (r.detail.includes("not in allowed values")) {
-        notes.push("Enumerate allowed values in system prompt for stricter adherence.");
+        fixes.push({
+          issue: "Model returns values outside the allowed set",
+          fix: 'Enumerate valid values in system prompt: "sentiment must be one of: positive, negative, neutral"',
+          alt: "Add a validation layer that maps unexpected values to the nearest allowed value.",
+        });
       }
       if (r.detail.includes("expected number")) {
-        notes.push("Specify value range constraints explicitly in prompt.");
+        fixes.push({
+          issue: "Model returns numbers in wrong range (e.g., 82 instead of 0.82)",
+          fix: 'Specify range in system prompt: "confidence must be a float between 0.0 and 1.0"',
+          alt: "Add post-processing: if value > 1, divide by 100.",
+        });
       }
     }
     if (r.status === "fail") {
       if (r.detail.includes("did not produce any tool calls")) {
-        notes.push("This model may not support tool calling. Try a larger model or use tool_choice=\"required\".");
+        fixes.push({
+          issue: "Model ignores tools and responds with plain text",
+          fix: 'Set tool_choice="required" to force tool use, or try a larger model (this model may lack tool calling support).',
+          alt: "Fall back to a prompt-based approach: ask the model to output a JSON object matching the tool schema.",
+        });
+      }
+      if (r.detail.includes("not valid JSON")) {
+        fixes.push({
+          issue: "Model output is not valid JSON despite json_object mode",
+          fix: "Try a larger model — small models often struggle with strict JSON mode. Add explicit format instructions to system prompt.",
+          alt: "Wrap the response in a try/catch and retry with a stronger prompt on parse failure.",
+        });
       }
     }
   }
 
-  return notes;
+  return { notes, fixes };
 }
 
 export function printDetection(detection) {
@@ -71,7 +98,7 @@ export function printDetection(detection) {
 
 export function printModelResult(model, results, latencyMs) {
   const overallStatus = getOverallStatus(results);
-  const notes = getMigrationNotes(results, overallStatus);
+  const { notes, fixes } = getMigrationNotes(results, overallStatus);
 
   const header = `  ${model.displayName}`;
   const latencyStr = latencyMs ? chalk.dim(` (${latencyMs}ms)`) : "";
@@ -91,15 +118,24 @@ export function printModelResult(model, results, latencyMs) {
 
   if (notes.length > 0) {
     console.log();
-    console.log(chalk.dim("  Notes:"));
     for (const note of notes) {
-      console.log(chalk.dim(`    • ${note}`));
+      console.log(chalk.dim(`  ${note}`));
+    }
+  }
+
+  if (fixes.length > 0) {
+    console.log();
+    console.log(chalk.yellow("  Fixes:"));
+    for (const f of fixes) {
+      console.log(chalk.yellow(`    → ${f.issue}`));
+      console.log(chalk.white(`      Fix: ${f.fix}`));
+      console.log(chalk.dim(`      Alt: ${f.alt}`));
     }
   }
 
   console.log();
 
-  return { model, overallStatus, notes };
+  return { model, overallStatus, notes, fixes };
 }
 
 export function printRecommendation(caseData, modelReports) {
