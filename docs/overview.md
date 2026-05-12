@@ -1,5 +1,7 @@
 # Fireworks Switchboard
 
+**A test harness for coding agents that verifies model behavior when migrating from closed-source models to open-source models on Fireworks.**
+
 ## The Problem
 
 Switching from a closed model to an open model on Fireworks is trivial at the API level — same SDK, same endpoint shape, swap the base URL and model ID. Configuration isn't the bottleneck. The bottleneck is behavioral reliability. When an engineer swaps GPT for Kimi or MiniMax, the API call succeeds but the model may behave differently in ways that break production — adding arguments a tool schema didn't ask for, returning values in the wrong range, or responding with plain text when a tool call was expected.
@@ -16,9 +18,11 @@ The prototype tests against Fireworks' serverless models — Kimi K2.6, DeepSeek
 
 ## The Approach
 
-Switchboard is a concierge experience for the coding agent, modeled after Stripe's agent skills. The engineer installs migration skills into their agent with one command (`npx skills add terrylinhaochen/fireworks-takehome -y`), and the agent gains knowledge of how to detect the current provider, which Fireworks models to test, what behavioral differences to expect, and how to fix them.
+Switchboard has two layers. The harness is a small, deterministic test runner — it loads a test case, calls the Fireworks API with each candidate model, validates the response against the engineer's expectations, and reports what passed, what broke, and how to fix it. The skills are markdown files containing the migration knowledge the agent needs: model mapping tables, detection patterns for identifying which provider a codebase currently uses, behavioral difference checklists, and remediation steps.
 
-The design follows the "thin harness, fat skills" principle. The harness is a small, deterministic test runner — it loads a case, calls the Fireworks API, validates the response, and reports what passed, what broke, and how to fix it. The skills are the heavy layer: plain markdown files containing model mappings, detection patterns, behavioral checklists, and remediation steps. Because skills are just text, they don't bloat the agent's context the way heavier integrations would, and they scale naturally — adding a new provider means writing a new skill file, not modifying the harness.
+The separation matters because the knowledge layer scales independently of the test infrastructure. Adding support for a new source provider means writing a new skill file, not modifying the runner. Updating model recommendations when Fireworks launches a new model means editing one markdown table. And because skills are plain text, they stay lightweight in the agent's context — unlike heavier tool integrations that can overwhelm the conversation window.
+
+The engineer installs the skills into their coding agent with one command (`npx skills add terrylinhaochen/fireworks-takehome -y`), and the agent gains the context it needs to guide a migration: which Fireworks models to test, what behavioral differences to expect, and how to address them.
 
 ## Key Design Choices
 
