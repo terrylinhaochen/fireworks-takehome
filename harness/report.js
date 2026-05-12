@@ -106,8 +106,8 @@ export function printRecommendation(caseData, modelReports) {
   const bestModel = modelReports.find((m) => m.overallStatus === "ready");
   const skillFile =
     caseData.sourceProvider === "openai"
-      ? "skills/openai-to-fireworks.md"
-      : `skills/${caseData.sourceProvider}-to-fireworks.md`;
+      ? "skills/openai-to-fireworks/SKILL.md"
+      : `skills/${caseData.sourceProvider}-to-fireworks/SKILL.md`;
 
   console.log(chalk.dim("─".repeat(54)));
 
