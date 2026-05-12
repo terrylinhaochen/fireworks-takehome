@@ -9,10 +9,14 @@ Fireworks Switchboard answers that question before you ship. It's two things:
 
 ## Install the Agent Skills
 
-Install the migration skills into your coding agent so it knows how to migrate your AI workflows:
+Install the migration skills into your coding agent:
 
 ```bash
-npx skills add terrylinhaochen/fireworks-takehome
+# Install for Claude Code + Codex (recommended)
+npx skills add terrylinhaochen/fireworks-takehome -a claude-code -a codex -y
+
+# Or install for all detected agents
+npx skills add terrylinhaochen/fireworks-takehome -y
 ```
 
 This gives your agent three skills:
