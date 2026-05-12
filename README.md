@@ -8,9 +8,12 @@ Inspired by [Stripe's agent skills](https://docs.stripe.com/building-with-ai) �
 
 ```bash
 npm install
+export FIREWORKS_API_KEY=your-key-here
 node harness/run.js cases/openai-tool-calling.json
 node harness/run.js cases/kimi-structured-output.json
 ```
+
+Get your API key at [fireworks.ai](https://fireworks.ai).
 
 ## What's Inside
 
@@ -26,7 +29,7 @@ cases/               → Sample migration test cases
   kimi-structured-output.json  → Kimi JSON mode → Fireworks
 
 harness/             → Thin harness (test runner)
-  run.js             → Entry point
+  run.js             → Entry point: calls Fireworks API + validates
   detect.js          → Auto-detect source provider from code
   validate.js        → Validate model outputs against expectations
   report.js          → Format terminal report
@@ -39,10 +42,9 @@ docs/
 
 1. Load a migration case (JSON file defining source code, target models, expectations)
 2. Auto-detect the source provider from the code snippet
-3. Validate mock model responses against expectations (tool call correctness, JSON schema adherence)
-4. Print a migration compatibility report with pass/partial/fail per dimension
-
-The prototype uses mock responses for deterministic demo output. In production, the harness would call the Fireworks API directly.
+3. Call the Fireworks API with each target model using the case's request parameters
+4. Validate real model responses against expectations (tool call correctness, JSON schema adherence)
+5. Print a migration compatibility report with pass/partial/fail per dimension and latency
 
 ## Design Doc
 

@@ -69,16 +69,17 @@ export function printDetection(detection) {
   console.log();
 }
 
-export function printModelResult(model, results) {
+export function printModelResult(model, results, latencyMs) {
   const overallStatus = getOverallStatus(results);
   const notes = getMigrationNotes(results, overallStatus);
 
   const header = `  ${model.displayName}`;
+  const latencyStr = latencyMs ? chalk.dim(` (${latencyMs}ms)`) : "";
   const statusLabel = OVERALL_STATUS[overallStatus];
   const padding = Math.max(2, 50 - header.length - overallStatus.length);
 
   console.log(chalk.dim("  " + "─".repeat(50)));
-  console.log(`${header}${" ".repeat(padding)}${statusLabel}`);
+  console.log(`${header}${latencyStr}${" ".repeat(padding)}${statusLabel}`);
   console.log(chalk.dim("  " + "─".repeat(50)));
 
   for (const r of results) {

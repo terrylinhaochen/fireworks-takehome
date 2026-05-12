@@ -1,12 +1,12 @@
 /**
  * Output validator.
- * Compares model responses against case expectations to determine compatibility.
+ * Compares real model responses against case expectations to determine compatibility.
  * Each validation dimension produces a pass/partial/fail result with explanation.
  */
 
-export function validateToolCalling(mockResponse, expectations, toolSchemas) {
+function validateToolCalling(response, expectations) {
   const results = [];
-  const message = mockResponse.choices?.[0]?.message;
+  const message = response.choices?.[0]?.message;
 
   // Dimension 1: Did the model produce a tool call at all?
   const toolCalls = message?.tool_calls;
@@ -15,9 +15,8 @@ export function validateToolCalling(mockResponse, expectations, toolSchemas) {
       dimension: "Tool Call Format",
       status: "fail",
       detail: "Model did not produce any tool calls. Responded with plain text instead.",
-      evidence: message?.content?.slice(0, 100) || "(empty response)",
+      evidence: message?.content?.slice(0, 120) || "(empty response)",
     });
-    // If no tool calls, remaining dimensions are automatically fail
     results.push({
       dimension: "Argument Extraction",
       status: "fail",
@@ -31,7 +30,6 @@ export function validateToolCalling(mockResponse, expectations, toolSchemas) {
     return results;
   }
 
-  // Tool call exists
   const toolCall = toolCalls[0];
   const fnName = toolCall.function?.name;
   const fnArgs = toolCall.function?.arguments;
@@ -65,12 +63,11 @@ export function validateToolCalling(mockResponse, expectations, toolSchemas) {
     results.push({
       dimension: "JSON Validity",
       status: "fail",
-      detail: "Cannot validate schema — arguments not parseable.",
+      detail: "Cannot validate — arguments not parseable.",
     });
     return results;
   }
 
-  // Check required args are present with correct values
   const requiredArgs = expectations.required_args || [];
   const expectedValues = expectations.expected_arg_values || {};
   const optionalArgs = expectations.optional_args || [];
@@ -83,9 +80,13 @@ export function validateToolCalling(mockResponse, expectations, toolSchemas) {
     if (!(arg in parsedArgs)) {
       argStatus = "fail";
       argDetail += `Missing required argument "${arg}". `;
-    } else if (expectedValues[arg] && parsedArgs[arg] !== expectedValues[arg]) {
-      argStatus = "partial";
-      argDetail += `Argument "${arg}" = "${parsedArgs[arg]}", expected "${expectedValues[arg]}". `;
+    } else if (expectedValues[arg]) {
+      const actual = String(parsedArgs[arg]).toLowerCase();
+      const expected = String(expectedValues[arg]).toLowerCase();
+      if (actual !== expected) {
+        argStatus = "partial";
+        argDetail += `Argument "${arg}" = "${parsedArgs[arg]}", expected "${expectedValues[arg]}". `;
+      }
     }
   }
 
@@ -116,9 +117,9 @@ export function validateToolCalling(mockResponse, expectations, toolSchemas) {
   return results;
 }
 
-export function validateStructuredOutput(mockResponse, expectations) {
+function validateStructuredOutput(response, expectations) {
   const results = [];
-  const message = mockResponse.choices?.[0]?.message;
+  const message = response.choices?.[0]?.message;
   const content = message?.content;
 
   // Dimension 1: Is the output valid JSON?
@@ -135,7 +136,7 @@ export function validateStructuredOutput(mockResponse, expectations) {
       dimension: "JSON Validity",
       status: "fail",
       detail: "Output is not valid JSON.",
-      evidence: content?.slice(0, 100),
+      evidence: content?.slice(0, 120),
     });
     results.push({
       dimension: "Schema Adherence",
@@ -184,12 +185,22 @@ export function validateStructuredOutput(mockResponse, expectations) {
     if (value === undefined) continue;
 
     if (constraint.type === "enum" && !constraint.values.includes(value)) {
-      constraintIssues.push(`"${field}" = "${value}" not in allowed values [${constraint.values.join(", ")}]`);
+      constraintIssues.push(
+        `"${field}" = "${value}" not in allowed values [${constraint.values.join(", ")}]`
+      );
     }
-    if (constraint.type === "range" && (typeof value !== "number" || value < constraint.min || value > constraint.max)) {
-      constraintIssues.push(`"${field}" = ${value}, expected number in [${constraint.min}, ${constraint.max}]`);
+    if (
+      constraint.type === "range" &&
+      (typeof value !== "number" || value < constraint.min || value > constraint.max)
+    ) {
+      constraintIssues.push(
+        `"${field}" = ${value}, expected number in [${constraint.min}, ${constraint.max}]`
+      );
     }
-    if (constraint.type === "array_of_strings" && (!Array.isArray(value) || !value.every((v) => typeof v === "string"))) {
+    if (
+      constraint.type === "array_of_strings" &&
+      (!Array.isArray(value) || !value.every((v) => typeof v === "string"))
+    ) {
       constraintIssues.push(`"${field}" is not an array of strings`);
     }
   }
@@ -211,24 +222,13 @@ export function validateStructuredOutput(mockResponse, expectations) {
   return results;
 }
 
-export function validateCase(caseData, modelId) {
-  const mockResponse = caseData.mockResponses[modelId];
-  if (!mockResponse) {
-    return [
-      {
-        dimension: "Response",
-        status: "fail",
-        detail: "No mock response available for this model.",
-      },
-    ];
-  }
-
+export function validateCase(caseData, response) {
   if (caseData.features.includes("tool-calling")) {
-    return validateToolCalling(mockResponse, caseData.expectations, caseData.toolSchemas);
+    return validateToolCalling(response, caseData.expectations);
   }
 
   if (caseData.features.includes("structured-output") || caseData.features.includes("json-mode")) {
-    return validateStructuredOutput(mockResponse, caseData.expectations);
+    return validateStructuredOutput(response, caseData.expectations);
   }
 
   return [

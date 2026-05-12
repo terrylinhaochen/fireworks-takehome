@@ -10,9 +10,16 @@
     "demo:openai": "node harness/run.js cases/openai-tool-calling.json",
     "demo:kimi": "node harness/run.js cases/kimi-structured-output.json"
   },
-  "keywords": ["fireworks", "ai", "migration", "openai", "kimi"],
+  "keywords": [
+    "fireworks",
+    "ai",
+    "migration",
+    "openai",
+    "kimi"
+  ],
   "license": "MIT",
   "dependencies": {
-    "chalk": "^5.6.2"
+    "chalk": "^5.6.2",
+    "openai": "^6.37.0"
   }
 }

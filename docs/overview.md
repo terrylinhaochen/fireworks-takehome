@@ -16,7 +16,7 @@ Fireworks Switchboard is an **agent skills + test harness** package — modeled 
 
 1. **Agent-first, not UI-first.** The tool is designed to be consumed by coding agents, not operated through a dashboard. Skills are plain markdown (like Stripe's `.well-known/skills/`). The harness is a CLI script. This matches how developers actually migrate — with an AI agent in their IDE.
 
-2. **Mock data in prototype, real API in production.** Cases include pre-baked model responses so the demo works without API keys and produces deterministic results. In production, the harness would call the Fireworks API directly.
+2. **Real API calls.** The harness calls the Fireworks API directly with each target model, validates real responses against expectations, and reports latency. This tests actual behavioral compatibility, not simulated results.
 
 3. **Report, not scores.** Each dimension gets pass/partial/fail with a human-readable explanation. No weighted scoring or numeric grades. The goal is actionable clarity: what works, what breaks, and what to fix.
 
@@ -32,8 +32,8 @@ $ node harness/run.js cases/openai-tool-calling.json
 
 ## What Would Come Next
 
-- **Live API mode**: Call Fireworks API with real prompts instead of mock responses
-- **Custom case builder**: Let agents generate case files from existing codebases
+- **Custom case builder**: Let agents generate case files from existing codebases automatically
 - **More provider skills**: Claude-to-Fireworks, Gemini-to-Fireworks
 - **npx install**: `npx skills add fireworks-switchboard` (like Stripe's model)
 - **MCP server**: Expose the harness as MCP tools so agents can run checks programmatically
+- **Regression testing**: Re-run cases after model updates to catch behavioral changes

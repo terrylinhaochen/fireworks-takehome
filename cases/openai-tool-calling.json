@@ -6,19 +6,29 @@
   "sourceCode": "from openai import OpenAI\n\nclient = OpenAI()\n\ntools = [{\n    \"type\": \"function\",\n    \"function\": {\n        \"name\": \"get_weather\",\n        \"description\": \"Get current weather for a city\",\n        \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"city\": {\"type\": \"string\", \"description\": \"City name\"},\n                \"unit\": {\"type\": \"string\", \"enum\": [\"celsius\", \"fahrenheit\"]}\n            },\n            \"required\": [\"city\"]\n        }\n    }\n}]\n\nresponse = client.chat.completions.create(\n    model=\"gpt-4o\",\n    messages=[{\"role\": \"user\", \"content\": \"What's the weather in Tokyo?\"}],\n    tools=tools,\n    tool_choice=\"auto\"\n)\n\ntool_call = response.choices[0].message.tool_calls[0]\nprint(tool_call.function.name, tool_call.function.arguments)",
   "language": "python",
   "features": ["tool-calling"],
-  "toolSchemas": [
-    {
-      "name": "get_weather",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "city": { "type": "string" },
-          "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] }
-        },
-        "required": ["city"]
+  "request": {
+    "messages": [
+      { "role": "user", "content": "What's the weather in Tokyo?" }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get current weather for a city",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "city": { "type": "string", "description": "City name" },
+              "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] }
+            },
+            "required": ["city"]
+          }
+        }
       }
-    }
-  ],
+    ],
+    "tool_choice": "auto"
+  },
   "expectations": {
     "tool_call_name": "get_weather",
     "required_args": ["city"],
@@ -43,61 +53,5 @@
       "displayName": "Qwen 3 8B",
       "category": "small"
     }
-  ],
-  "mockResponses": {
-    "accounts/fireworks/models/kimi-k2p6": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": null,
-            "tool_calls": [
-              {
-                "id": "call_abc123",
-                "type": "function",
-                "function": {
-                  "name": "get_weather",
-                  "arguments": "{\"city\": \"Tokyo\"}"
-                }
-              }
-            ]
-          },
-          "finish_reason": "tool_calls"
-        }
-      ]
-    },
-    "accounts/fireworks/models/deepseek-v3p2": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": null,
-            "tool_calls": [
-              {
-                "id": "call_def456",
-                "type": "function",
-                "function": {
-                  "name": "get_weather",
-                  "arguments": "{\"city\": \"Tokyo\", \"unit\": \"celsius\", \"country\": \"Japan\"}"
-                }
-              }
-            ]
-          },
-          "finish_reason": "tool_calls"
-        }
-      ]
-    },
-    "accounts/fireworks/models/qwen3-8b": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "The weather in Tokyo is currently sunny with a temperature of around 22°C.",
-            "tool_calls": null
-          },
-          "finish_reason": "stop"
-        }
-      ]
-    }
-  }
+  ]
 }

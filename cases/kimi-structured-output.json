@@ -6,14 +6,18 @@
   "sourceCode": "from openai import OpenAI\n\nclient = OpenAI(\n    api_key=\"YOUR_KIMI_API_KEY\",\n    base_url=\"https://api.moonshot.cn/v1\",\n)\n\nresponse = client.chat.completions.create(\n    model=\"moonshot-v1-8k\",\n    messages=[\n        {\n            \"role\": \"system\",\n            \"content\": \"Classify the sentiment of product reviews. Return JSON with fields: sentiment (positive|negative|neutral), confidence (float 0-1), key_phrases (array of strings).\"\n        },\n        {\n            \"role\": \"user\",\n            \"content\": \"The battery life is incredible but the screen could be brighter. Overall I'm happy with the purchase.\"\n        }\n    ],\n    response_format={\"type\": \"json_object\"}\n)\n\nimport json\nresult = json.loads(response.choices[0].message.content)\nprint(result[\"sentiment\"], result[\"confidence\"])",
   "language": "python",
   "features": ["structured-output", "json-mode", "system-prompt"],
-  "expectedSchema": {
-    "type": "object",
-    "properties": {
-      "sentiment": { "type": "string", "enum": ["positive", "negative", "neutral"] },
-      "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-      "key_phrases": { "type": "array", "items": { "type": "string" } }
-    },
-    "required": ["sentiment", "confidence", "key_phrases"]
+  "request": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify the sentiment of product reviews. Return JSON with exactly these fields and no others: sentiment (must be one of: positive, negative, neutral), confidence (float between 0 and 1), key_phrases (array of strings)."
+      },
+      {
+        "role": "user",
+        "content": "The battery life is incredible but the screen could be brighter. Overall I'm happy with the purchase."
+      }
+    ],
+    "response_format": { "type": "json_object" }
   },
   "expectations": {
     "output_format": "json",
@@ -40,40 +44,5 @@
       "displayName": "Qwen 3 8B",
       "category": "small"
     }
-  ],
-  "mockResponses": {
-    "accounts/fireworks/models/kimi-k2p6": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "{\"sentiment\": \"positive\", \"confidence\": 0.78, \"key_phrases\": [\"incredible battery life\", \"screen could be brighter\", \"happy with the purchase\"]}"
-          },
-          "finish_reason": "stop"
-        }
-      ]
-    },
-    "accounts/fireworks/models/minimax-m2p5": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "{\"sentiment\": \"positive\", \"confidence\": 82, \"key_phrases\": [\"battery life is incredible\", \"screen could be brighter\"], \"overall_tone\": \"satisfied\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ]
-    },
-    "accounts/fireworks/models/qwen3-8b": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "{\"sentiment\": \"mixed\", \"confidence\": 0.65, \"key_phrases\": [\"incredible\", \"brighter\", \"happy\"]}"
-          },
-          "finish_reason": "stop"
-        }
-      ]
-    }
-  }
+  ]
 }
