@@ -1,0 +1,18 @@
+{
+  "name": "fireworks-switchboard",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Agent skills + test harness for migrating AI workflows from closed models to Fireworks open models",
+  "bin": {
+    "switchboard": "harness/run.js"
+  },
+  "scripts": {
+    "demo:openai": "node harness/run.js cases/openai-tool-calling.json",
+    "demo:kimi": "node harness/run.js cases/kimi-structured-output.json"
+  },
+  "keywords": ["fireworks", "ai", "migration", "openai", "kimi"],
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.6.2"
+  }
+}

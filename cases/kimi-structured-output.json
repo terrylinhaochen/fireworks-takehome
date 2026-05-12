@@ -1,0 +1,79 @@
+{
+  "id": "kimi-structured-output",
+  "title": "Kimi Structured Output → Fireworks",
+  "description": "A product review sentiment classifier using Kimi's JSON mode to return structured analysis. Tests JSON schema adherence and field completeness on Fireworks models.",
+  "sourceProvider": "kimi",
+  "sourceCode": "from openai import OpenAI\n\nclient = OpenAI(\n    api_key=\"YOUR_KIMI_API_KEY\",\n    base_url=\"https://api.moonshot.cn/v1\",\n)\n\nresponse = client.chat.completions.create(\n    model=\"moonshot-v1-8k\",\n    messages=[\n        {\n            \"role\": \"system\",\n            \"content\": \"Classify the sentiment of product reviews. Return JSON with fields: sentiment (positive|negative|neutral), confidence (float 0-1), key_phrases (array of strings).\"\n        },\n        {\n            \"role\": \"user\",\n            \"content\": \"The battery life is incredible but the screen could be brighter. Overall I'm happy with the purchase.\"\n        }\n    ],\n    response_format={\"type\": \"json_object\"}\n)\n\nimport json\nresult = json.loads(response.choices[0].message.content)\nprint(result[\"sentiment\"], result[\"confidence\"])",
+  "language": "python",
+  "features": ["structured-output", "json-mode", "system-prompt"],
+  "expectedSchema": {
+    "type": "object",
+    "properties": {
+      "sentiment": { "type": "string", "enum": ["positive", "negative", "neutral"] },
+      "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+      "key_phrases": { "type": "array", "items": { "type": "string" } }
+    },
+    "required": ["sentiment", "confidence", "key_phrases"]
+  },
+  "expectations": {
+    "output_format": "json",
+    "required_fields": ["sentiment", "confidence", "key_phrases"],
+    "field_constraints": {
+      "sentiment": { "type": "enum", "values": ["positive", "negative", "neutral"] },
+      "confidence": { "type": "range", "min": 0, "max": 1 },
+      "key_phrases": { "type": "array_of_strings" }
+    }
+  },
+  "targetModels": [
+    {
+      "id": "accounts/fireworks/models/kimi-k2p6",
+      "displayName": "Kimi K2.6",
+      "category": "large"
+    },
+    {
+      "id": "accounts/fireworks/models/minimax-m2p5",
+      "displayName": "MiniMax 2.5",
+      "category": "large"
+    },
+    {
+      "id": "accounts/fireworks/models/qwen3-8b",
+      "displayName": "Qwen 3 8B",
+      "category": "small"
+    }
+  ],
+  "mockResponses": {
+    "accounts/fireworks/models/kimi-k2p6": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"sentiment\": \"positive\", \"confidence\": 0.78, \"key_phrases\": [\"incredible battery life\", \"screen could be brighter\", \"happy with the purchase\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    },
+    "accounts/fireworks/models/minimax-m2p5": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"sentiment\": \"positive\", \"confidence\": 82, \"key_phrases\": [\"battery life is incredible\", \"screen could be brighter\"], \"overall_tone\": \"satisfied\"}"
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    },
+    "accounts/fireworks/models/qwen3-8b": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"sentiment\": \"mixed\", \"confidence\": 0.65, \"key_phrases\": [\"incredible\", \"brighter\", \"happy\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    }
+  }
+}

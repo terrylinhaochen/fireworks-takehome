@@ -1,0 +1,30 @@
+{
+  "name": "fireworks-switchboard",
+  "version": "0.1.0",
+  "description": "Agent skills for migrating AI workflows from closed models to Fireworks open models",
+  "skills": [
+    {
+      "id": "recommended-models",
+      "name": "Fireworks Recommended Models",
+      "file": "recommended-models.md",
+      "description": "Model recommendations and migration mappings from closed-source providers (OpenAI, Claude, Gemini) to Fireworks open models, organized by use case and latency budget."
+    },
+    {
+      "id": "openai-to-fireworks",
+      "name": "Migrate OpenAI to Fireworks",
+      "file": "openai-to-fireworks.md",
+      "description": "Step-by-step migration playbook for moving OpenAI GPT workflows to Fireworks. Covers SDK changes, model mapping, tool calling, JSON mode, and streaming compatibility."
+    },
+    {
+      "id": "kimi-to-fireworks",
+      "name": "Migrate Kimi to Fireworks",
+      "file": "kimi-to-fireworks.md",
+      "description": "Step-by-step migration playbook for moving Kimi/Moonshot workflows to Fireworks. Covers base URL changes, model mapping, JSON mode, and context window differences."
+    }
+  ],
+  "harness": {
+    "entry": "harness/run.js",
+    "cases_dir": "cases/",
+    "usage": "node harness/run.js <case-file.json>"
+  }
+}
